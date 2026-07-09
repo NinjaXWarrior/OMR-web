@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OMR Software (Web)</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260228-1" />
+</head>
+<body>
+  <div class="app">
+    <main class="workspace">
+      <section class="card topbar">
+        <div class="statusBlock">
+          <span class="muted">Status</span>
+          <span id="statusText" class="statusValue">idle</span>
+        </div>
+        <div class="progressWrap">
+          <div class="progressOuter">
+            <div id="progressInner" class="progressInner" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div><span class="muted">Elapsed:</span> <span id="elapsed">0.0s</span></div>
+          <div><span class="muted">IPS:</span> <span id="ips">0.0</span></div>
+          <div><span class="muted">ETA:</span> <span id="eta">--</span></div>
+          <div><span class="muted">Last:</span> <span id="last">-</span></div>
+        </div>
+      </section>
+
+      <section class="card preview">
+        <div class="previewTitle muted">Preview</div>
+        <div id="previewEmpty" class="previewEmpty">Preview will appear here</div>
+        <img id="previewImg" alt="preview" />
+      </section>
+    </main>
+
+    <aside class="panel controls">
+      <section class="card">
+        <h3>Inputs</h3>
+
+        <div class="row">
+          <label>Answers</label>
+          <input id="answersPath" type="text" value="" placeholder="Select answer CSV" readonly />
+        </div>
+        <button id="btnLoadAnswers" class="btn">Load Answers</button>
+
+        <div class="row">
+          <label>Folder</label>
+          <input id="folderPath" type="text" value="OMR_dev/OMR_Software/new_sheet" />
+        </div>
+        <div class="btnRow">
+          <button id="btnSelectFolder" class="btn">Select Folder</button>
+          <button id="btnSelectPDF" class="btn">Select PDF</button>
+        </div>
+
+        <div class="row">
+          <label>Template</label>
+          <input id="templatePath" type="text" value="" placeholder="Select template file" readonly />
+        </div>
+        <button id="btnSelectTemplate" class="btn">Select Template</button>
+
+      </section>
+
+      <section class="card">
+        <h3>Settings</h3>
+        <div class="row">
+          <label>Fill ratio</label>
+          <input id="fillRatio" type="number" step="0.01" value="0.32" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Actions</h3>
+        <button id="btnRun" class="btn primary">Run OMR</button>
+        <button id="btnPreviewChecked" class="btn subtle" disabled>Preview Checked Sheets</button>
+        <button id="btnExport" class="btn" disabled>Download CSV</button>
+      </section>
+    </aside>
+  </div>
+
+  <!-- hidden file pickers -->
+  <input id="fileAnswers" type="file" accept=".csv" hidden />
+  <input id="filePDF" type="file" accept="application/pdf" hidden />
+  <input id="fileFolder" type="file" webkitdirectory directory hidden />
+  <input id="fileTemplate" type="file" accept=".pickle,.pkl,application/octet-stream" hidden />
+
+  <script src="/static/app.js?v=20260228-1"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — light theme. Chrome values follow the validated dataviz
+   palette (warm neutrals, blue accent); see src/lib/chart-theme.ts for the
+   chart-facing slots. */
+@layer base {
+  :root {
+    --background: #f9f9f7;
+    --foreground: #0b0b0b;
+    --card: #fcfcfb;
+    --card-foreground: #0b0b0b;
+    --popover: #fcfcfb;
+    --popover-foreground: #0b0b0b;
+    --primary: #2a78d6;
+    --primary-foreground: #ffffff;
+    --secondary: #f0efec;
+    --secondary-foreground: #0b0b0b;
+    --muted: #f0efec;
+    --muted-foreground: #52514e;
+    --accent: #eaf2fc;
+    --accent-foreground: #1c5cab;
+    --destructive: #d03b3b;
+    --destructive-foreground: #ffffff;
+    --border: #e5e4dd;
+    --input: #dcdbd3;
+    --ring: #2a78d6;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}

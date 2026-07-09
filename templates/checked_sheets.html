@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Checked Sheets</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260228-1" />
+</head>
+<body>
+  <div class="checkedPage" data-job-id="{{ job_id }}">
+    <section class="card checkedHeader">
+      <div>
+        <div class="muted">Checked Sheets</div>
+        <h1 id="checkedTitle">Loading...</h1>
+      </div>
+      <div class="checkedMeta">
+        <div><span class="muted">Image</span> <span id="checkedPosition">-</span></div>
+        <div><span class="muted">Status</span> <span id="checkedStatus">-</span></div>
+        <div><span class="muted">Score</span> <span id="checkedScore">-</span></div>
+      </div>
+    </section>
+
+    <section class="card checkedViewer">
+      <button id="btnPrevChecked" class="btn subtle checkedNav">Previous</button>
+      <div class="checkedCanvas">
+        <div id="checkedEmpty" class="previewEmpty">Loading checked sheets...</div>
+        <img id="checkedImage" alt="checked sheet" />
+      </div>
+      <button id="btnNextChecked" class="btn subtle checkedNav">Next</button>
+    </section>
+  </div>
+
+  <script src="/static/checked_sheets.js?v=20260228-1"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": ["src/components/ui/button.tsx", "src/components/ui/card.tsx", "src/components/ui/select.tsx", "src/components/ui/table.tsx"]
+}

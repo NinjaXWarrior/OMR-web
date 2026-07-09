@@ -1,0 +1,16 @@
+# Git hooks — installed automatically by `bun install` in frontend/ (prepare script).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: typecheck
+      root: "frontend/"
+      glob: "*.{ts,tsx}"
+      run: bun run typecheck
+    - name: lint
+      root: "frontend/"
+      glob: "*.{ts,tsx}"
+      run: bun run lint
+    - name: knip
+      root: "frontend/"
+      glob: "*.{ts,tsx,json}"
+      run: bun run knip
