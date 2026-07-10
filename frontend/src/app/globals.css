@@ -35,4 +35,8 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+}
+.cl-internal-pak4nu {
+  display: none !important;
 }
