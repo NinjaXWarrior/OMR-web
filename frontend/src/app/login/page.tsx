@@ -7,7 +7,7 @@ export default function LoginPage() {
       {/* soft radial accent behind the card */}
       <div
         aria-hidden
-        className="pointer-events-none       absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(42,120,214,0.14),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(42,120,214,0.14),transparent)]"
       />
       <div className="relative flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#1c5cab] text-primary-foreground shadow-md">

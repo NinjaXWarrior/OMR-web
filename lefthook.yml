@@ -11,6 +11,11 @@ pre-commit:
       root: "frontend/"
       glob: "*.{ts,tsx}"
       run: bun run lint
+    - name: format
+      root: "frontend/"
+      glob: "*.{ts,tsx,css}"
+      run: bunx prettier --write {staged_files}
+      stage_fixed: true
     - name: knip
       root: "frontend/"
       glob: "*.{ts,tsx,json}"
