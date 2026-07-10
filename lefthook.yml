@@ -1,4 +1,5 @@
 # Git hooks — installed automatically by `bun install` in frontend/ (prepare script).
+# Python side needs its own setup once: `venv/bin/pip install -r requirements-dev.txt`
 pre-commit:
   parallel: true
   jobs:
@@ -14,3 +15,22 @@ pre-commit:
       root: "frontend/"
       glob: "*.{ts,tsx,json}"
       run: bun run knip
+    - name: python-lint
+      root: "."
+      glob: "*.py"
+      run: venv/bin/pre-commit run --files {staged_files}
+    - name: oxlint
+      root: "."
+      glob: "static/*.js"
+      run: bunx oxlint {staged_files}
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: |
+        pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9./_-]+\))?!?: .+"
+        if ! grep -qE "$pattern" {1}; then
+          echo "Commit message must follow Conventional Commits, e.g.: feat(app): add roll-no retry"
+          echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+          exit 1
+        fi
