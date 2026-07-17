@@ -81,15 +81,6 @@ def load_answers_from_csv_bytes(csv_bytes: bytes, source_name: str = "uploaded a
     return _load_answers_from_reader(reader, source_name)
 
 
-def save_csv(records: List[dict], out_csv: str, columns: List[str]) -> None:
-    with open(out_csv, mode="w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=columns)
-        w.writeheader()
-        for r in records:
-            row = {k: r.get(k, "") for k in columns}
-            w.writerow(row)
-
-
 def _to_np_points(grid) -> np.ndarray:
     arr = np.array(grid, dtype=np.float32)
     if arr.ndim != 3 or arr.shape[2] != 2:
@@ -103,6 +94,8 @@ class OMRConfig:
     inv_thresh: bool = True
     box_w: int = 22
     box_h: int = 14
+    rollbox_w: int = 22
+    rollbox_h: int = 14
     fill_ratio: float = 0.32
 
 cfg = OMRConfig(
@@ -168,43 +161,12 @@ class OMRProcessorFast:
         self.ans_pts = _to_np_points(answers_grid)   # (Nq,4,2)
 
         self._prepared = False
-        self._roll_boxes = None
-        self._ans_boxes = None
-        self._roll_area = None
-        self._ans_area = None
-        self._img_wh = None  # (w,h)
-    def export_csv(self,records):
-        if not records:
-            return
+        self._roll_boxes: np.ndarray = np.empty((0, 4), dtype=np.int32)
+        self._ans_boxes: np.ndarray = np.empty((0, 4), dtype=np.int32)
+        self._roll_area: float = 0.0
+        self._ans_area: float = 0.0
+        self._img_wh: Optional[Tuple[int, int]] = None  # (w,h)
 
-        r0 = records[0]
-
-        # 1) question keys are ints: 1..50
-        q_int_keys = sorted([k for k in r0.keys() if isinstance(k, int)])
-
-        # 2) subject-wise keys: marks_Science, marks_Maths, ...
-        subj_keys = sorted([k for k in r0.keys() if isinstance(k, str) and k.startswith("marks_")])
-
-        # 3) build export records with Q1..Q50 string keys
-        export_records = []
-        for rec in records:
-            new_rec = dict(rec)  # shallow copy
-
-            # create Q1..Q50 keys from int keys
-            for q in q_int_keys:
-                new_rec[f"Q{q}"] = rec.get(q, "")
-
-            export_records.append(new_rec)
-
-        # 4) columns order
-        columns = (
-            ["File_name", "Rollno"]
-            + [f"Q{q}" for q in q_int_keys]
-            + subj_keys
-            + ["correct", "wrong", "skipped", "Invalid", "score", "total_questions"]
-        )
-
-        save_csv(export_records, columns)
     def _prepare_boxes_for_size(self, w: int, h: int) -> None:
         self._img_wh = (w, h)
 
@@ -354,11 +316,13 @@ class OMRProcessorFast:
                 if ans_av is not None:
                  if flag:
                   try:
-                    cond=ans_av.pop() if is_marked else None
-                  except:
+                    cond = ans_av.pop() if is_marked else None
+                  except Exception:
                       raise ValueError("select correct format type")
                  if cond is not None and is_marked:
                     flag=False
+                    label: Optional[str] = None
+                    txtcol: Tuple[int, int, int] = (0, 0, 0)
                     if cond==-1:
                          txtcol=(0,0,255)
                          label='incorrect'
@@ -368,15 +332,13 @@ class OMRProcessorFast:
                     elif cond==1:
                          txtcol=(0,255,0)
                          label='correct'
-                    center = (((x1 + x2) // 2)+12, (y1 + y2) // 2)
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    fontScale = 0.7
-                    # color = (0, 255, 0)  # Green
-                    thickness = 1
+                    if label is not None:
+                        center = (((x1 + x2) // 2)+12, (y1 + y2) // 2)
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        fontScale = 0.7
+                        thickness = 1
+                        cv2.putText(canvas_bgr, label, center, font, fontScale, txtcol, thickness, cv2.LINE_AA)
 
-                    # Put text on image
-                    cv2.putText(canvas_bgr, label, center, font, fontScale, txtcol, thickness, cv2.LINE_AA)
-          
                 col = (0, 0, 255) if is_marked else (0, 255, 255)
                 # center = ((x1 + x2) // 2, (y1 + y2) // 2)
                 # axes = (abs(x2 - x1) // 2, abs(y2 - y1) // 2)
@@ -445,7 +407,7 @@ class OMRProcessorFast:
         want_preview: bool = True,
         preview_draw_all: bool = True,
         preview_downscale: float = 0.6,
-    ) -> Tuple[dict, Optional[np.ndarray]]:
+    ) -> dict:
         img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # if img_gray is None:
         #     raise ValueError(f"Failed to read image: {img_path}")
@@ -573,29 +535,22 @@ class OMRProcessorFast:
         #     record[f"{subject}_skipped"] = subj_skipped[subject]
         #     record[f"{subject}_invalid"] = subj_invalid[subject]
 
-        preview = None
-        if want_preview:
-            canvas = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-            # draw roll + answer boxes like old behavior
-            self._draw_boxes(canvas, self.roll_pts, roll_marked, draw_all=preview_draw_all,type_box=True)
-            self._draw_boxes(canvas, self.ans_pts, ans_marked, draw_all=preview_draw_all,ans_av=answers_data)
-            self.put_record_on_image(canvas,{
-            "Rollno": rollno,
-            "score": format(score, ".2f"),
-            "correct": correct,
-            "wrong": wrong,
-            "skipped": skipped,
-            "Invalid": invalid,
-        })
-            # indices = np.where(bw == 1)
-            # try:
-            #  canvas[indices[0], indices[1], :] = [0, 0, 255]
-            # except:
-            #     pass 
-            if preview_downscale and preview_downscale != 1.0:
-                canvas = cv2.resize(canvas, (0, 0), fx=preview_downscale, fy=preview_downscale, interpolation=cv2.INTER_AREA)
-            preview = canvas
-            self.records.append(record)
+        canvas = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        # draw roll + answer boxes like old behavior
+        self._draw_boxes(canvas, self.roll_pts, roll_marked, draw_all=preview_draw_all,type_box=True)
+        self._draw_boxes(canvas, self.ans_pts, ans_marked, draw_all=preview_draw_all,ans_av=answers_data)
+        self.put_record_on_image(canvas,{
+        "Rollno": rollno,
+        "score": format(score, ".2f"),
+        "correct": correct,
+        "wrong": wrong,
+        "skipped": skipped,
+        "Invalid": invalid,
+    })
+        if preview_downscale and preview_downscale != 1.0:
+            canvas = cv2.resize(canvas, (0, 0), fx=preview_downscale, fy=preview_downscale, interpolation=cv2.INTER_AREA)
+        preview = canvas
+        self.records.append(record)
         ok, buf = cv2.imencode(".jpg", preview)
         preview_b64 = base64.b64encode(buf).decode("utf-8")
         # print('self.rec',self.records)
