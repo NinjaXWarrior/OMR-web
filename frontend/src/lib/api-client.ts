@@ -8,7 +8,10 @@ import {
 } from "@/lib/zod-schemas";
 import type { AnswerKeyRow, JobProgress, PreviewItem, ReportRow } from "@/types/omr";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(
+  /\/+$/,
+  "",
+);
 
 async function request(path: string, init?: RequestInit): Promise<unknown> {
   const res = await fetch(`${BASE_URL}${path}`, init);
