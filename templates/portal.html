@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Result Portal — OMR Software (Web)</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260719-1" />
+</head>
+<body>
+  <div class="app portalApp">
+    <main class="workspace">
+      <section class="card">
+        <h3>Result Portal</h3>
+        <p class="muted">Enter the Organization ID given by your institution and your roll number.</p>
+        <div class="portalForm">
+          <div class="row">
+            <label>Org ID</label>
+            <input id="orgId" type="text" placeholder="e.g. 3F9A2C" />
+          </div>
+          <div class="row">
+            <label>Roll No</label>
+            <input id="rollNo" type="text" placeholder="e.g. 42" />
+          </div>
+          <div class="btnRow">
+            <button id="btnStudent" class="btn primary">My Results</button>
+            <button id="btnOrg" class="btn subtle">Organization History</button>
+          </div>
+        </div>
+        <p id="portalStatus" class="muted"></p>
+      </section>
+
+      <section class="card" id="statsCard" hidden>
+        <h3 id="resultTitle"></h3>
+        <div class="statRow" id="statRow"></div>
+        <div class="barChart" id="barChart"></div>
+      </section>
+
+      <section class="card" id="tableCard" hidden>
+        <div class="tableWrap">
+          <table class="resultTable" id="resultTable"></table>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/portal.js?v=20260719-1"></script>
+</body>
+</html>

@@ -31,6 +31,17 @@ Three layers, each a single file:
   `GET /report/{job_id}` builds the CSV export on demand from accumulated `records`. Jobs live only in
   process memory — restarting the server loses all job history.
 
+  **MongoDB (Atlas) publication layer**, also in `app.py`: jobs stay in memory, but *published* results
+  persist. `POST /org/register` creates an organization with a 6-char ID; `POST /publish/{job_id}` copies a
+  finished job's slimmed records (rollno, score, counters, subject marks — per-question answers stay
+  CSV-only) into the `results` collection of the `omr_web` db, one document per publish (republishing
+  appends, giving orgs a history). `GET /org/{org_id}/exams` and `GET /student/{org_id}/{rollno}` feed the
+  public portal at `/portal` (`templates/portal.html` + `static/portal.js`, supports
+  `?org=ID&roll=N` shareable links). Roll numbers are normalized via `_norm_roll` (leading zeros stripped)
+  on both publish and lookup. Connection string comes from `MONGO_URL` env var with a hardcoded Atlas
+  fallback. `GET /orgs` (super admin) lists every org + publish count, gated by an `X-Admin-Key` header
+  checked against the `ADMIN_KEY` env var (default `admin`). `python test_db.py` checks the helpers.
+
 - **`backend_core/omr_engine_fast.py`** — `OMRProcessorFast` does the actual grading, one instance per job
   (constructed once in `run_job`, reused across all images in that job). Key points:
   - Template pickle (see "Template format" below) is loaded once in `__init__`; per-image work is in

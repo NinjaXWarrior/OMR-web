@@ -12,18 +12,45 @@ import csv
 import io
 import base64
 import pickle
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
 from backend_core.omr_engine_fast import OMRProcessorFast, load_answers_from_csv_bytes
+
+# ---------- MongoDB Atlas ----------
+MONGO_URL = os.getenv(
+    "MONGO_URL",
+    "mongodb+srv://nikhillimbu918:nikhillimbu918@coder.1zymf.mongodb.net/",
+)
+mongo_client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=8000)
+db = mongo_client["omr_web"]  # collections: organizations, results
+
+# ponytail: single shared key; real per-user auth if this ever leaves localhost
+ADMIN_KEY = os.getenv("ADMIN_KEY", "admin")
+
+
+def _num(v):
+    """Scores are stored as formatted strings ('12.00'); coerce safely."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _norm_roll(roll: str) -> str:
+    """'042' and '42' are the same roll number."""
+    return (roll or "").strip().lstrip("0") or "0"
 
 app = FastAPI(
     title="OMR Grading API",
@@ -397,3 +424,172 @@ def report(job_id: str):
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="omr_report.csv"'},
     )
+
+
+# ---------- Database: organizations, publishing, student portal ----------
+
+class RegisterOrgRequest(BaseModel):
+    name: str
+
+
+class PublishRequest(BaseModel):
+    org_id: str
+    exam_name: str
+
+
+@app.get("/portal", response_class=HTMLResponse, tags=["Pages"], summary="Student/organization result portal")
+def portal_page(request: Request):
+    """Render the public portal where students look up published results."""
+    return templates.TemplateResponse(request, "portal.html")
+
+
+@app.post("/org/register", tags=["Database"], summary="Register an organization")
+def register_org(req: RegisterOrgRequest):
+    """Create an organization and return its unique ID (share this with students)."""
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Organization name is required")
+    org_id = uuid.uuid4().hex[:6].upper()
+    try:
+        db.organizations.insert_one({
+            "_id": org_id,
+            "name": name,
+            "created_at": datetime.now(timezone.utc),
+        })
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    return {"org_id": org_id, "name": name}
+
+
+@app.get("/orgs", tags=["Database"], summary="List all organizations (super admin)")
+def list_orgs(x_admin_key: str = Header("", alias="X-Admin-Key", description="Super-admin key (ADMIN_KEY env var)")):
+    """Return every registered organization with its unique ID and publish count."""
+    if x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key (send X-Admin-Key header)")
+    try:
+        counts = {
+            d["_id"]: d["n"]
+            for d in db.results.aggregate([{"$group": {"_id": "$org_id", "n": {"$sum": 1}}}])
+        }
+        orgs = [
+            {
+                "org_id": o["_id"],
+                "name": o["name"],
+                "created_at": o["created_at"].isoformat(),
+                "exams_published": counts.get(o["_id"], 0),
+            }
+            for o in db.organizations.find().sort("created_at", 1)
+        ]
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    return {"count": len(orgs), "organizations": orgs}
+
+
+def _get_org(org_id: str):
+    try:
+        org = db.organizations.find_one({"_id": (org_id or "").strip().upper()})
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    if not org:
+        raise HTTPException(status_code=404, detail="Unknown organization ID")
+    return org
+
+
+@app.post("/publish/{job_id}", tags=["Database"], summary="Publish a finished job's results")
+def publish_results(job_id: str, req: PublishRequest):
+    """Save a graded job's results to MongoDB under an organization + exam name."""
+    exam_name = req.exam_name.strip()
+    if not exam_name:
+        raise HTTPException(status_code=400, detail="Exam name is required")
+    org = _get_org(req.org_id)
+
+    with jobs_lock:
+        j = jobs.get(job_id)
+    if not j:
+        raise HTTPException(status_code=404, detail="job not found")
+    if j["state"] != "done":
+        raise HTTPException(status_code=400, detail="job not finished")
+    records = j.get("records", [])
+    if not records:
+        raise HTTPException(status_code=400, detail="no records to publish")
+
+    # Mongo keys must be strings; keep only what the portal needs (full detail
+    # stays available via the CSV report).
+    slim = []
+    for rec in records:
+        slim.append({
+            "rollno": _norm_roll(str(rec.get("Rollno", ""))),
+            "score": _num(rec.get("score")),
+            "correct": int(rec.get("correct", 0)),
+            "wrong": int(rec.get("wrong", 0)),
+            "skipped": int(rec.get("skipped", 0)),
+            "invalid": int(rec.get("Invalid", 0)),
+            "total_questions": int(rec.get("total_questions", 0)),
+            "subjects": {
+                k[len("marks_"):]: _num(v)
+                for k, v in rec.items()
+                if isinstance(k, str) and k.startswith("marks_")
+            },
+        })
+
+    doc = {
+        "org_id": org["_id"],
+        "exam_name": exam_name,
+        "published_at": datetime.now(timezone.utc),
+        "sheet_count": len(slim),
+        "avg_score": round(sum(r["score"] for r in slim) / len(slim), 2),
+        "records": slim,
+    }
+    try:
+        db.results.insert_one(doc)
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    return {"org_id": org["_id"], "exam_name": exam_name, "published": len(slim)}
+
+
+@app.get("/org/{org_id}/exams", tags=["Database"], summary="Organization result history")
+def org_history(org_id: str):
+    """List every exam an organization has published (no per-student data)."""
+    org = _get_org(org_id)
+    try:
+        cursor = db.results.find({"org_id": org["_id"]}, {"records": 0}).sort("published_at", -1)
+        exams = [
+            {
+                "exam_name": d["exam_name"],
+                "published_at": d["published_at"].isoformat(),
+                "sheet_count": d.get("sheet_count", 0),
+                "avg_score": d.get("avg_score", 0),
+            }
+            for d in cursor
+        ]
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    return {"org_id": org["_id"], "org_name": org["name"], "exams": exams}
+
+
+@app.get("/student/{org_id}/{rollno}", tags=["Database"], summary="Student result lookup")
+def student_results(org_id: str, rollno: str):
+    """Return every published result for one roll number in an organization."""
+    org = _get_org(org_id)
+    roll = _norm_roll(rollno)
+    out = []
+    try:
+        # ponytail: linear scan over the org's exams; aggregate/index if orgs grow large
+        for d in db.results.find({"org_id": org["_id"]}).sort("published_at", 1):
+            for rec in d.get("records", []):
+                if _norm_roll(rec.get("rollno", "")) == roll:
+                    out.append({
+                        "exam_name": d["exam_name"],
+                        "published_at": d["published_at"].isoformat(),
+                        **{k: v for k, v in rec.items() if k != "rollno"},
+                    })
+                    break
+    except PyMongoError as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    return {
+        "org_id": org["_id"],
+        "org_name": org["name"],
+        "rollno": roll,
+        "exam_count": len(out),
+        "results": out,
+    }

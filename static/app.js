@@ -26,6 +26,12 @@ const ui = {
   answersPath: $("answersPath"),
   folderPath: $("folderPath"),
   templatePath: $("templatePath"),
+
+  orgId: $("orgId"),
+  examName: $("examName"),
+  orgName: $("orgName"),
+  btnPublish: $("btnPublish"),
+  btnRegisterOrg: $("btnRegisterOrg"),
 };
 
 // ---------- Config ----------
@@ -123,6 +129,7 @@ function updateActionButtons({ running: isRunning = false, canExport = false, ca
   ui.btnRun.disabled = isRunning;
   ui.btnExport.disabled = isRunning || !canExport;
   ui.btnPreviewChecked.disabled = isRunning || !canPreview;
+  ui.btnPublish.disabled = isRunning || !canExport; // publishable when records exist
 }
 
 async function showCheckedSheets() {
@@ -366,8 +373,49 @@ async function exportReportCsv() {
   }
 }
 
+// ---------- Publish / org registration ----------
+async function registerOrg() {
+  const name = ui.orgName.value.trim();
+  if (!name) { setStatus("Enter an organization name."); return; }
+  try {
+    const res = await fetch(`${API_BASE}/org/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => `${res.status}`));
+    const data = await res.json();
+    ui.orgId.value = data.org_id;
+    setStatus(`Registered "${data.name}" — Org ID: ${data.org_id}`);
+  } catch (e) {
+    setStatus(e?.message || "Registration failed");
+  }
+}
+
+async function publishResults() {
+  if (ui.btnPublish.disabled || !jobId) return;
+  const org_id = ui.orgId.value.trim();
+  const exam_name = ui.examName.value.trim();
+  if (!org_id || !exam_name) { setStatus("Enter Org ID and exam name."); return; }
+  setStatus("publishing...");
+  try {
+    const res = await fetch(`${API_BASE}/publish/${jobId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ org_id, exam_name }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => `${res.status}`));
+    const data = await res.json();
+    setStatus(`Published ${data.published} results for "${data.exam_name}" (org ${data.org_id})`);
+  } catch (e) {
+    setStatus(e?.message || "Publish failed");
+  }
+}
+
 // ---------- Events ----------
 ui.btnRun.addEventListener("click", startBackendRun);
+ui.btnPublish.addEventListener("click", publishResults);
+ui.btnRegisterOrg.addEventListener("click", registerOrg);
 ui.btnExport.addEventListener("click", exportReportCsv);
 ui.btnPreviewChecked.addEventListener("click", showCheckedSheets);
 

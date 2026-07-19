@@ -1,7 +1,16 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { FileSearch, LayoutDashboard, Menu, ScanLine, UploadCloud, User, X } from "lucide-react";
+import {
+  Building2,
+  FileSearch,
+  LayoutDashboard,
+  Menu,
+  ScanLine,
+  UploadCloud,
+  User,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -21,7 +30,16 @@ function useNavItems() {
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/upload", icon: UploadCloud, label: "Upload Hub" },
     ...(activeJobId
-      ? [{ href: `/admin/checked-sheets/${activeJobId}`, icon: FileSearch, label: "Checked Sheets" }]
+      ? [
+          {
+            href: `/admin/checked-sheets/${activeJobId}`,
+            icon: FileSearch,
+            label: "Checked Sheets",
+          },
+        ]
+      : []),
+    ...(role === "SUPER_ADMIN"
+      ? [{ href: "/super-admin", icon: Building2, label: "Organizations" }]
       : []),
   ];
 }
@@ -54,7 +72,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
                   ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -83,10 +101,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+            className="bg-foreground/30 absolute inset-0 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-card shadow-xl animate-in slide-in-from-left duration-200">
+          <aside className="absolute inset-y-0 left-0 w-64 bg-card shadow-xl duration-200 animate-in slide-in-from-left">
             <button
               className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
               onClick={() => setMobileOpen(false)}
@@ -100,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
+        <header className="bg-card/80 sticky top-0 z-40 flex h-14 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-3">
             <button
               className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary lg:hidden"

@@ -2,5 +2,6 @@ fastapi
 jinja2
 numpy
 opencv-python-headless
+pymongo[srv]
 python-multipart
 uvicorn
