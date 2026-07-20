@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -50,8 +51,9 @@ export default async function SuperAdminPage() {
       <CardHeader>
         <CardTitle>Organizations</CardTitle>
         <CardDescription>
-          Every registered organization with its unique ID. Share an ID with an institution&apos;s
-          students so they can look up published results.
+          Every registered organization with its unique ID. Click an organization to open its
+          dashboard with full result history. Share an ID with an institution&apos;s students so
+          they can look up published results.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -72,8 +74,16 @@ export default async function SuperAdminPage() {
             <TableBody>
               {orgs.map((o) => (
                 <TableRow key={o.org_id}>
-                  <TableCell className="font-mono font-semibold">{o.org_id}</TableCell>
-                  <TableCell>{o.name}</TableCell>
+                  <TableCell className="font-mono font-semibold">
+                    <Link href={`/super-admin/${o.org_id}`} className="hover:underline">
+                      {o.org_id}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/super-admin/${o.org_id}`} className="hover:underline">
+                      {o.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>{new Date(o.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">{o.exams_published}</TableCell>
                 </TableRow>

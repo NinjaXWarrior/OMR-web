@@ -1,11 +1,21 @@
 "use client";
 
-import { AlertTriangle, Download, FileWarning, GraduationCap, Inbox, Target, UploadCloud, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Download,
+  FileWarning,
+  GraduationCap,
+  Inbox,
+  Target,
+  UploadCloud,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { HardestQuestionsChart } from "@/components/dashboard/HardestQuestionsChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { PublishCard } from "@/components/dashboard/PublishCard";
 import { ProgressRing } from "@/components/dashboard/ProgressRing";
 import { ScoreDistributionChart } from "@/components/dashboard/ScoreDistributionChart";
 import { StudentTable } from "@/components/dashboard/StudentTable";
@@ -34,7 +44,9 @@ export default function AdminDashboardPage() {
   const activeJobId = useOmrJobStore((s) => s.activeJobId);
   const setActiveJob = useOmrJobStore((s) => s.setActiveJob);
   const recentJobs = useOmrJobStore((s) => s.recentJobs);
-  const answerKey = useOmrJobStore((s) => (activeJobId ? (s.answerKeyByJob[activeJobId] ?? null) : null));
+  const answerKey = useOmrJobStore((s) =>
+    activeJobId ? (s.answerKeyByJob[activeJobId] ?? null) : null,
+  );
   const passThreshold = useOmrJobStore((s) => s.passThreshold);
   const [manualId, setManualId] = useState("");
 
@@ -67,7 +79,11 @@ export default function AdminDashboardPage() {
             if (manualId.trim()) setActiveJob(manualId.trim());
           }}
         >
-          <Input placeholder="…or paste a job_id" value={manualId} onChange={(e) => setManualId(e.target.value)} />
+          <Input
+            placeholder="…or paste a job_id"
+            value={manualId}
+            onChange={(e) => setManualId(e.target.value)}
+          />
           <Button type="submit" variant="outline">
             Load
           </Button>
@@ -78,7 +94,10 @@ export default function AdminDashboardPage() {
 
   const jobOptions = recentJobs.some((j) => j.id === activeJobId)
     ? recentJobs
-    : [{ id: activeJobId, label: `${activeJobId.slice(0, 8)}… (manual)`, startedAt: "" }, ...recentJobs];
+    : [
+        { id: activeJobId, label: `${activeJobId.slice(0, 8)}… (manual)`, startedAt: "" },
+        ...recentJobs,
+      ];
 
   const jobPicker = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -123,8 +142,8 @@ export default function AdminDashboardPage() {
         <AlertTriangle className="h-4 w-4 text-[#9a4a1f]" />
         <AlertTitle>Job not found on the server</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          The backend keeps jobs in memory only — a server restart clears them. Re-run the batch from
-          the Upload Hub.
+          The backend keeps jobs in memory only — a server restart clears them. Re-run the batch
+          from the Upload Hub.
         </AlertDescription>
       </Alert>
     );
@@ -134,7 +153,10 @@ export default function AdminDashboardPage() {
       <Card className="p-6 shadow-sm">
         <p className="font-semibold">Grading in progress…</p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#cde2fb]">
-          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${pct}%` }} />
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Processed {progress.done}/{progress.total} · {progress.ips.toFixed(1)} sheets/sec · ETA{" "}
@@ -166,8 +188,8 @@ export default function AdminDashboardPage() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Job stopped early</AlertTitle>
             <AlertDescription>
-              {progress.error ?? "Unknown error"} — showing the {report.length} sheets graded before the
-              failure. Failed sheets are saved server-side in Invalid_sheets/.
+              {progress.error ?? "Unknown error"} — showing the {report.length} sheets graded before
+              the failure. Failed sheets are saved server-side in Invalid_sheets/.
             </AlertDescription>
           </Alert>
         )}
@@ -216,6 +238,8 @@ export default function AdminDashboardPage() {
           passThreshold={passThreshold}
           onView={(index) => router.push(`/admin/checked-sheets/${activeJobId}?index=${index}`)}
         />
+
+        <PublishCard jobId={activeJobId} ready={progress?.state === "done"} />
       </>
     );
   }

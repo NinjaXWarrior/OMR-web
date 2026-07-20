@@ -33,9 +33,41 @@ export const previewListSchema = z.object({
       name: z.string(),
       status: z.string(),
       score: z.union([z.number(), z.string()]),
-    })
+    }),
   ),
 });
+
+/** POST /org/register — mirrors app.py register_org */
+export const registerOrgSchema = z.object({ org_id: z.string(), name: z.string() });
+
+/** POST /publish/{job_id} — mirrors app.py publish_results */
+export const publishResponseSchema = z.object({
+  org_id: z.string(),
+  exam_name: z.string(),
+  published: z.number(),
+});
+
+/** GET /student/{org_id}/{rollno} — mirrors app.py student_results */
+export const studentResultsSchema = z.object({
+  org_id: z.string(),
+  org_name: z.string(),
+  rollno: z.string(),
+  exam_count: z.number(),
+  results: z.array(
+    z.object({
+      exam_name: z.string(),
+      published_at: z.string(),
+      score: z.number(),
+      correct: z.number(),
+      wrong: z.number(),
+      skipped: z.number(),
+      invalid: z.number(),
+      total_questions: z.number(),
+      subjects: z.record(z.string(), z.number()),
+    }),
+  ),
+});
+export type StudentResults = z.infer<typeof studentResultsSchema>;
 
 /** One row of the answer-key CSV (Question, Subject, Marks_Correct, Negative_Percent, Answer). */
 export const answerKeyRowSchema = z.object({

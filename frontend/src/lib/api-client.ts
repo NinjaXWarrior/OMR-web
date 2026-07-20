@@ -3,8 +3,12 @@ import {
   answerKeyRowSchema,
   jobProgressSchema,
   previewListSchema,
+  publishResponseSchema,
+  registerOrgSchema,
   reportRowSchema,
   runResponseSchema,
+  studentResultsSchema,
+  type StudentResults,
 } from "@/lib/zod-schemas";
 import type { AnswerKeyRow, JobProgress, PreviewItem, ReportRow } from "@/types/omr";
 
@@ -65,6 +69,35 @@ export const omrApi = {
   /** direct download link for the "Export CSV" button */
   reportDownloadUrl(jobId: string): string {
     return `${BASE_URL}/report/${jobId}`;
+  },
+
+  /** POST /org/register — create an organization, returns its unique 6-char ID */
+  async registerOrg(name: string): Promise<{ org_id: string; name: string }> {
+    return registerOrgSchema.parse(
+      await request("/org/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      }),
+    );
+  },
+
+  /** POST /publish/{job_id} — persist a finished job's results to MongoDB */
+  async publishResults(jobId: string, orgId: string, examName: string) {
+    return publishResponseSchema.parse(
+      await request(`/publish/${jobId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ org_id: orgId, exam_name: examName }),
+      }),
+    );
+  },
+
+  /** GET /student/{org_id}/{rollno} — a student's published result history */
+  async getStudentResults(orgId: string, rollNo: string): Promise<StudentResults> {
+    return studentResultsSchema.parse(
+      await request(`/student/${encodeURIComponent(orgId)}/${encodeURIComponent(rollNo)}`),
+    );
   },
 
   /** Parses + validates the admin's answer-key upload in the browser so the UI can compute hardest-questions without a new backend endpoint. */
